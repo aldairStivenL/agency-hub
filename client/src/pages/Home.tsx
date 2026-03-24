@@ -25,6 +25,9 @@ import {
   ArrowRight
 } from "lucide-react";
 
+// ......
+
+
 export default function Home({ onEnter }: { onEnter: () => void }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const currentYear = new Date().getFullYear();
