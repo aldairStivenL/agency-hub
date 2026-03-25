@@ -1,37 +1,39 @@
 import { useState } from "react";
-
+import { supabase } from "./supabaseClient"; // Importación correcta: mismo nivel
 import {
-  AlertCircle,
-  TrendingDown,
-  Users,
-  Zap,
-  BarChart3,
-  Brain,
-  CheckCircle2,
-  TrendingUp,
-  Clock,
-  Target,
-  Activity,
-  Cpu,
-  Bell,
-  Star,
-  Twitter,
-  Github,
-  Linkedin,
-  Mail,
-  Menu,
-  X,
-  Sparkles,
-  ArrowRight
+  AlertCircle, TrendingDown, Users, Zap, BarChart3, Brain,
+  CheckCircle2, TrendingUp, Clock, Target, Activity, Cpu,
+  Bell, Star, Twitter, Github, Linkedin, Mail, Menu, X,
+  Sparkles, ArrowRight
 } from "lucide-react";
 
-// ......
 
-
+// export default function Home({ onEnter }: { onEnter: () => void }) {
+//   const [menuOpen, setMenuOpen] = useState(false);
+//   const currentYear = new Date().getFullYear();
 export default function Home({ onEnter }: { onEnter: () => void }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const currentYear = new Date().getFullYear();
 
+  // --- NUEVA FUNCIÓN PARA LOGIN ---
+const handleGoogleLogin = async () => {
+    // 1. Intentamos el login con Google
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: window.location.origin, // Esto recarga la página al volver
+      },
+    });
+
+    if (error) {
+      console.error("Error al registrar cliente:", error.message);
+      alert("Hubo un error al conectar con Google");
+      return;
+    }
+
+    // 2. Si no hay error, lo mandamos a la selección (Admin/Streamer)
+    onEnter(); 
+  };
   // ── data ──────────────────────────────────────────────────────────────────
 
   const navLinks = [
@@ -254,9 +256,12 @@ export default function Home({ onEnter }: { onEnter: () => void }) {
               <button className="hidden sm:inline-flex px-6 py-2 rounded-lg font-semibold text-sm text-white bg-[#ff0080] hover:shadow-[0_0_20px_rgba(255,0,128,0.5)] transition-all">
                 Empieza Ahora
               </button>
-              <button onClick={() => setMenuOpen(!menuOpen)} className="md:hidden p-2 rounded-lg hover:bg-[#1a1f3a] transition-colors">
-                {menuOpen ? <X className="w-5 h-5 text-white" /> : <Menu className="w-5 h-5 text-white" />}
-              </button>
+             <button 
+  onClick={handleGoogleLogin} 
+  className="hidden sm:inline-flex px-6 py-2 rounded-lg font-semibold text-sm text-white bg-[#ff0080] hover:shadow-[0_0_20px_rgba(255,0,128,0.5)] transition-all"
+>
+  Empieza Ahora
+</button>
             </div>
           </div>
 
@@ -306,8 +311,15 @@ export default function Home({ onEnter }: { onEnter: () => void }) {
             Todo en una plataforma diseñada para agencias modernas.
           </p>
 
+          <p className="text-lg sm:text-xl text-gray-300 mb-10 max-w-3xl mx-auto leading-relaxed">
+            Centraliza la gestión de tus streamers, optimiza batallas inteligentes y maximiza ingresos.
+            <span className="block mt-4 py-2 px-4 bg-[#ff0080]/20 border border-[#ff0080]/50 rounded-lg text-[#ff0080] font-bold text-2xl animate-pulse">
+              🎁 ¡REGÍSTRATE AHORA Y OBTÉN 2 MESES GRATIS!
+            </span>
+          </p>
+
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
-           <button
+           {/* <button
   onClick={onEnter}
   className="group relative px-8 py-4 font-semibold text-white text-lg rounded-lg overflow-hidden"
 >
@@ -317,37 +329,36 @@ export default function Home({ onEnter }: { onEnter: () => void }) {
                 Empieza Ahora
                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </span>
-            </button>
+            </button> */}
+
+            <button
+  onClick={handleGoogleLogin} // <-- AQUÍ: Ahora registra Y LUEGO entra
+  className="group relative px-8 py-4 font-semibold text-white text-lg rounded-lg overflow-hidden"
+>
+  <div className="absolute inset-0 bg-gradient-to-r from-[#ff0080] to-[#ff0080] group-hover:blur-lg transition-all duration-300 opacity-75 group-hover:opacity-100" />
+  <div className="absolute inset-[2px] bg-[#0a0e27] rounded-[6px]" />
+  <span className="relative flex items-center justify-center gap-2 group-hover:gap-3 transition-all">
+    Empieza Ahora
+    <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+  </span>
+</button>
             <button className="px-8 py-4 font-semibold text-white text-lg rounded-lg bg-[#1a1f3a]/50 border border-[#00ffff]/50 hover:border-[#00ffff] hover:bg-[#1a1f3a]/80 backdrop-blur transition-all duration-300 hover:shadow-[0_0_20px_rgba(0,255,255,0.3)]">
               Solicitar Demo
             </button>
           </div>
 
-          {/* Mock dashboard */}
-          <div className="relative rounded-2xl overflow-hidden border border-[#00ffff]/20 backdrop-blur-md bg-[#1a1f3a]/30 p-8 shadow-2xl group hover:shadow-[0_0_40px_rgba(0,255,255,0.2)] transition-all">
-            <div className="absolute inset-0 bg-gradient-to-br from-[#00ffff]/10 via-transparent to-[#ff0080]/10 opacity-0 group-hover:opacity-100 transition-opacity" />
-            <div className="relative z-10">
-              <div className="grid grid-cols-3 gap-4 mb-6">
-                {[
-                  { val: '50+', label: 'Agencias', color: '#00ffff' },
-                  { val: '1000+', label: 'Streamers', color: '#ff0080' },
-                  { val: '$10M+', label: 'En ganancias', color: '#0080ff' },
-                ].map((s) => (
-                  <div key={s.label} className="h-20 bg-[#2d3247]/50 rounded-lg flex items-center justify-center" style={{ border: `1px solid ${s.color}33` }}>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold" style={{ color: s.color }}>{s.val}</div>
-                      <div className="text-xs text-gray-400">{s.label}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div className="space-y-4">
-                <div className="h-3 bg-[#2d3247]/50 rounded-full w-full" />
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="h-3 bg-[#2d3247]/50 rounded-full w-3/4" />
-                  <div className="h-3 bg-[#2d3247]/50 rounded-full w-2/3" />
-                </div>
-                <div className="h-3 bg-[#2d3247]/50 rounded-full w-5/6" />
+                    {/* Mock dashboard real */}
+          <div className="relative rounded-2xl overflow-hidden border border-[#00ffff]/30 shadow-2xl group transition-all">
+            <img 
+              src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=2000&auto=format&fit=crop" 
+              alt="Dashboard Agency Hub" 
+              className="w-full h-auto object-cover opacity-90 group-hover:opacity-100 transition-opacity"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#0a0e27] via-transparent to-transparent" />
+            <div className="absolute bottom-6 left-6 z-20">
+              <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-[#00ffff]/20 border border-[#00ffff]/50 backdrop-blur-md">
+                <div className="w-2 h-2 rounded-full bg-[#00ffff] animate-ping" />
+                <span className="text-xs font-bold text-[#00ffff]">SISTEMA ACTIVO</span>
               </div>
             </div>
           </div>
