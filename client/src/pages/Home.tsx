@@ -12,8 +12,10 @@ import {
 //   const [menuOpen, setMenuOpen] = useState(false);
 //   const currentYear = new Date().getFullYear();
 export default function Home({ onEnter }: { onEnter: () => void }) {
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false); // <--- ESTA ES LA QUE FALTA
+  const [showAuthModal, setShowAuthModal] = useState(false); 
   const currentYear = new Date().getFullYear();
+
 
   // --- NUEVA FUNCIÓN PARA LOGIN ---
 const handleGoogleLogin = async () => {
@@ -257,7 +259,8 @@ const handleGoogleLogin = async () => {
                 Empieza Ahora
               </button>
              <button 
-  onClick={handleGoogleLogin} 
+  //onClick={handleGoogleLogin} 
+  onClick={() => setShowAuthModal(true)}
   className="hidden sm:inline-flex px-6 py-2 rounded-lg font-semibold text-sm text-white bg-[#ff0080] hover:shadow-[0_0_20px_rgba(255,0,128,0.5)] transition-all"
 >
   Empieza Ahora
@@ -275,7 +278,8 @@ const handleGoogleLogin = async () => {
                   </a>
                 ))}
             <button
-  onClick={onEnter}
+  //onClick={onEnter}
+  onClick={() => setShowAuthModal(true)}
   className="w-full mt-2 px-4 py-2 rounded-lg bg-[#ff0080] text-white font-semibold hover:bg-[#ff0080]/80 transition"
 >
   Empieza Ahora
@@ -332,7 +336,8 @@ const handleGoogleLogin = async () => {
             </button> */}
 
             <button
-  onClick={handleGoogleLogin} // <-- AQUÍ: Ahora registra Y LUEGO entra
+  //onClick={handleGoogleLogin} // <-- AQUÍ: Ahora registra Y LUEGO entra
+  onClick={() => setShowAuthModal(true)}
   className="group relative px-8 py-4 font-semibold text-white text-lg rounded-lg overflow-hidden"
 >
   <div className="absolute inset-0 bg-gradient-to-r from-[#ff0080] to-[#ff0080] group-hover:blur-lg transition-all duration-300 opacity-75 group-hover:opacity-100" />
@@ -781,6 +786,40 @@ const handleGoogleLogin = async () => {
           </div>
         </div>
       </footer>
+
+{/* ═══════════════════════ MODAL TIPO PREZI ═══════════════════════ */}
+      {showAuthModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-[#0a0e27]/90 backdrop-blur-sm">
+          <div className="relative w-full max-w-md p-8 rounded-2xl border border-[#00ffff]/30 bg-[#1a1f3a] shadow-2xl text-white">
+            <button onClick={() => setShowAuthModal(false)} className="absolute top-4 right-4 text-gray-400 hover:text-white">
+              <X className="w-6 h-6" />
+            </button>
+
+            <h2 className="text-2xl font-bold mb-6 text-center">Inicia Sesión</h2>
+            
+            <div className="space-y-4 mb-6">
+              <input type="email" placeholder="Correo electrónico" className="w-full px-4 py-3 rounded-lg bg-[#0a0e27] border border-[#2d3247] outline-none focus:border-[#00ffff]" />
+              <input type="password" placeholder="Contraseña" className="w-full px-4 py-3 rounded-lg bg-[#0a0e27] border border-[#2d3247] outline-none focus:border-[#00ffff]" />
+              <button className="w-full py-3 rounded-lg bg-[#ff0080] font-bold hover:bg-[#ff0080]/90 transition-all">
+                Continuar con correo
+              </button>
+            </div>
+
+            <div className="relative flex items-center justify-center mb-6">
+              <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-[#2d3247]"></div></div>
+              <span className="relative px-3 bg-[#1a1f3a] text-xs text-gray-500 uppercase">o</span>
+            </div>
+
+            <button 
+              onClick={handleGoogleLogin} 
+              className="w-full flex items-center justify-center gap-3 py-3 rounded-lg bg-white text-black font-semibold hover:bg-gray-100 transition-all"
+            >
+              <img src="https://www.google.com/favicon.ico" className="w-5 h-5" alt="Google" />
+              Continuar con Google
+            </button>
+          </div>
+        </div>
+      )}
 
     </main>
   );
