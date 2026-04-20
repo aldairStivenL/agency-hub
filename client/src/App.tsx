@@ -25,11 +25,16 @@ import DashboardLayout from "./components/DashboardLayout";
 import { useState } from "react";
 
 function AppContent() {
-  const { role, currentPage } = useApp();
+
+  
+  // CORRECCIÓN: Extraemos setRole de useApp() para que Home pueda usarlo
+  const { role, setRole, currentPage } = useApp(); 
   const [showLanding, setShowLanding] = useState(true);
+  
+
   if (showLanding) {
-  return <Home onEnter={() => setShowLanding(false)} />;
-}
+    return <Home onEnter={() => setShowLanding(false)} setRole={setRole} />;
+  }
 
   // Not logged in — show profile selector
   if (!role) {
@@ -59,9 +64,12 @@ function AppContent() {
       {renderPage()}
     </DashboardLayout>
   );
+
+  
 }
 
 function App() {
+  // CORRECCIÓN: Eliminamos los estados manuales de aquí porque ya los maneja el AppProvider
   return (
     <ErrorBoundary>
       <ThemeProvider defaultTheme="dark">

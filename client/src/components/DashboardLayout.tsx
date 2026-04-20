@@ -5,6 +5,7 @@
  */
 
 import { useApp } from "@/contexts/AppContext";
+import { supabase } from "../pages/supabaseClient";// - Ajustado según tu estructura de archivos
 import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard,
@@ -49,6 +50,24 @@ interface DashboardLayoutProps {
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const { currentPage, setCurrentPage, setRole } = useApp();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Nueva función para cerrar sesión correctamente
+  const handleLogout = async () => {
+    try {
+      // 1. Cerramos la sesión en el servidor de Supabase
+      await supabase.auth.signOut();
+      
+      // 2. Limpiamos el rol en el estado global para redirigir a la landing
+      setRole(null);
+      
+      // 3. Opcional: Forzamos el regreso a la página principal
+      window.location.href = "/";
+    } catch (error) {
+      console.error("Error al cerrar sesión:", error);
+      // Aun si falla Supabase, limpiamos el rol localmente
+      setRole(null);
+    }
+  };
 
   const now = new Date();
   const timeStr = now.toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" });
@@ -144,7 +163,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         {/* Bottom: logout */}
         <div className="px-3 py-4 border-t" style={{ borderColor: "oklch(1 0 0 / 6%)" }}>
           <button
-            onClick={() => setRole(null)}
+            onClick={handleLogout} // - Cambiado a la nueva función handleLogout
             className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-white/40 hover:text-red-400 hover:bg-red-500/10 transition-all duration-200"
           >
             <LogOut className="w-4 h-4" />

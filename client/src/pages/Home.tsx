@@ -1,5 +1,5 @@
-import { useState,useEffect } from "react";
-import { supabase } from "./supabaseClient"; // Importación correcta: mismo nivel
+import { useState, useEffect } from "react";
+import { supabase } from "./supabaseClient";
 import {
   AlertCircle,
   TrendingDown,
@@ -26,34 +26,53 @@ import {
 } from "lucide-react";
 
 
-// export default function Home({ onEnter }: { onEnter: () => void }) {
-//   const [menuOpen, setMenuOpen] = useState(false);
-//   const currentYear = new Date().getFullYear();
-export default function Home({ onEnter }: { onEnter: () => void }) {
-  const [menuOpen, setMenuOpen] = useState(false); // <--- ESTA ES LA QUE FALTA
+
+interface HomeProps {
+  onEnter: () => void;
+  setRole: (role: 'admin' | 'streamer' | null) => void;
+}
+
+export default function Home({ onEnter, setRole }: HomeProps) {
+  const [menuOpen, setMenuOpen] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const currentYear = new Date().getFullYear();
-  // 'login' para iniciar sesión, 'signup' para registro
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
+  const currentYear = new Date().getFullYear();
 
-
-    // Este efecto detecta cuando el usuario vuelve de Google con éxito
   useEffect(() => {
-    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
-      // Si el evento es que el usuario entró (por Google o por correo)
-      if (event === 'SIGNED_IN' && session) {
-        onEnter(); // <--- Esto es lo que te manda a la selección de perfil
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+      // Actuamos si hay una sesión activa (ya sea por login o refresco)
+      if (session?.user) {
+        
+        // 1. Buscamos el perfil en Supabase
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', session.user.id)
+          .single();
+
+        if (error && error.code !== 'PGRST116') { // Ignorar error si no hay fila aún
+          console.error("Error al obtener el perfil:", error.message);
+        }
+
+        // 2. Lógica de decisión con casting de tipo
+        if (data?.role) {
+          // Forzamos el tipo para que coincida con el estado de Agency Hub
+          setRole(data.role as 'admin' | 'streamer'); 
+          onEnter(); 
+        } else {
+          // Si no hay rol (usuario nuevo), va al selector
+          setRole(null);
+          onEnter();
+        }
       }
     });
 
-    // Limpiamos el escucha cuando el componente se destruye
     return () => {
       authListener.subscription.unsubscribe();
     };
-  }, [onEnter]);
-  
+  }, [onEnter, setRole]);
 
   // --- NUEVA FUNCIÓN PARA LOGIN ---
   const handleGoogleLogin = async () => {
