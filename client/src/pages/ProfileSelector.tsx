@@ -6,7 +6,8 @@
 
 import { useApp } from "@/contexts/AppContext";
 import { motion } from "framer-motion";
-import { Shield, User, ChevronRight } from "lucide-react";
+import { Shield, User, ChevronRight, LogOut } from "lucide-react";
+import { supabase } from "./supabaseClient"; // Asegúrate de que la ruta sea correcta
 
 const LOGIN_BG = "https://d2xsxph8kpxj0f.cloudfront.net/310519663455864775/gVC6y5Q2wpNYr4v7JmuSu6/agency-hub-login-bg-m89PU4UoGMpfkQbMXrbJuE.webp";
 const LOGO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663455864775/gVC6y5Q2wpNYr4v7JmuSu6/agency-hub-logo-D42x3YiMh7exopMvRVDsmF.webp";
@@ -14,8 +15,30 @@ const LOGO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663455864775/gVC6y5Q2w
 export default function ProfileSelector() {
   const { setRole } = useApp();
 
+  // Función para cerrar sesión y limpiar el LocalStorage automáticamente
+  const handleLogout = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      console.error("Error al cerrar sesión:", error.message);
+    }
+    // Forzamos el recargo para que el Home detecte que ya no hay sesión
+    window.location.reload();
+  };
+
   return (
     <div className="min-h-screen relative flex items-center justify-center overflow-hidden">
+      
+      {/*  BOTÓN CERRAR SESIÓN  */}
+      <motion.button
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        onClick={handleLogout}
+        className="absolute top-6 right-6 z-50 flex items-center gap-2 px-4 py-2 rounded-xl border border-white/10 bg-white/5 backdrop-blur-md text-white/70 hover:text-white hover:bg-white/10 transition-all text-sm font-medium"
+      >
+        <LogOut className="w-4 h-4" />
+        Cerrar Sesión
+      </motion.button>
+
       {/* Background image */}
       <div
         className="absolute inset-0 bg-cover bg-center"
@@ -63,7 +86,6 @@ export default function ProfileSelector() {
             className="group relative flex flex-col items-center p-6 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md hover:bg-white/10 hover:border-red-500/50 transition-all duration-300"
             style={{ boxShadow: "0 4px 24px rgba(0,0,0,0.3)" }}
           >
-            {/* Icon */}
             <div className="w-16 h-16 rounded-full flex items-center justify-center mb-4 transition-all duration-300 group-hover:scale-110"
               style={{ background: "linear-gradient(135deg, #e8294c, #c41e3a)", boxShadow: "0 0 20px rgba(232,41,76,0.4)" }}>
               <Shield className="w-8 h-8 text-white" />
@@ -90,7 +112,6 @@ export default function ProfileSelector() {
             className="group relative flex flex-col items-center p-6 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md hover:bg-white/10 hover:border-cyan-500/50 transition-all duration-300"
             style={{ boxShadow: "0 4px 24px rgba(0,0,0,0.3)" }}
           >
-            {/* Icon */}
             <div className="w-16 h-16 rounded-full flex items-center justify-center mb-4 transition-all duration-300 group-hover:scale-110"
               style={{ background: "linear-gradient(135deg, #00b4d8, #0077b6)", boxShadow: "0 0 20px rgba(0,180,216,0.4)" }}>
               <User className="w-8 h-8 text-white" />

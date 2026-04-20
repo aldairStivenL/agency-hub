@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState,useEffect } from "react";
 import { supabase } from "./supabaseClient"; // Importación correcta: mismo nivel
 import {
   AlertCircle,
@@ -25,13 +25,35 @@ import {
   ArrowRight,
 } from "lucide-react";
 
+
 // export default function Home({ onEnter }: { onEnter: () => void }) {
 //   const [menuOpen, setMenuOpen] = useState(false);
 //   const currentYear = new Date().getFullYear();
 export default function Home({ onEnter }: { onEnter: () => void }) {
   const [menuOpen, setMenuOpen] = useState(false); // <--- ESTA ES LA QUE FALTA
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const currentYear = new Date().getFullYear();
+  // 'login' para iniciar sesión, 'signup' para registro
+  const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
+
+
+    // Este efecto detecta cuando el usuario vuelve de Google con éxito
+  useEffect(() => {
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      // Si el evento es que el usuario entró (por Google o por correo)
+      if (event === 'SIGNED_IN' && session) {
+        onEnter(); // <--- Esto es lo que te manda a la selección de perfil
+      }
+    });
+
+    // Limpiamos el escucha cuando el componente se destruye
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
+  }, [onEnter]);
+  
 
   // --- NUEVA FUNCIÓN PARA LOGIN ---
   const handleGoogleLogin = async () => {
@@ -53,6 +75,49 @@ export default function Home({ onEnter }: { onEnter: () => void }) {
     onEnter();
   };
   // ── data ──────────────────────────────────────────────────────────────────
+const handleEmailLogin = async (e: React.FormEvent) => {
+  e.preventDefault(); 
+  
+  if (!email || !password) {
+    alert("Por favor, completa todos los campos");
+    return;
+  }
+
+  // 1. Intentamos iniciar sesión
+  const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
+
+  // 2. Si no hay error de login, entramos directo
+  if (!loginError) {
+    setShowAuthModal(false);
+    onEnter();
+    return; // Salimos de la función aquí
+  }
+
+  // 3. Si hubo error de login, intentamos registrarlo (Suponiendo que es usuario nuevo)
+  const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+    email,
+    password,
+  });
+
+  if (signUpError) {
+    alert("Error: " + signUpError.message);
+    return;
+  }
+
+  // 4. Manejo del registro exitoso
+  // Si Supabase devuelve una sesión inmediatamente (porque el autoconfirm está activado)
+  if (signUpData.session) {
+    setShowAuthModal(false);
+    onEnter();
+  } else {
+    // Si requiere confirmación de email
+    alert("¡Cuenta creada! Por favor, verifica tu correo electrónico para poder ingresar.");
+    setShowAuthModal(false);
+  }
+};
 
   const navLinks = [
     { label: "Producto", href: "#" },
@@ -307,13 +372,28 @@ export default function Home({ onEnter }: { onEnter: () => void }) {
             </div>
 
             {/* CTA + hamburger */}
-            <div className="flex items-center gap-4">
-              <button
-                //onClick={handleGoogleLogin}
-                onClick={() => setShowAuthModal(true)}
-                className="hidden sm:inline-flex px-6 py-2 rounded-lg font-semibold text-sm text-white bg-[#ff0080] hover:shadow-[0_0_20px_rgba(255,0,128,0.5)] transition-all">
-                Empieza Ahora
-              </button>
+            <div className="flex items-center gap-6">
+              {/* Botón de Inicio de Sesión */}
+            <button
+              onClick={() => {
+                setAuthMode('login');
+                setShowAuthModal(true);
+              }}
+              className="hidden sm:inline-flex text-sm font-semibold text-white/70 hover:text-white transition-colors"
+            >
+              Iniciar Sesión
+            </button>
+
+            {/* Botón de Registro */}
+            <button
+              onClick={() => {
+                setAuthMode('signup');
+                setShowAuthModal(true);
+              }}
+              className="hidden sm:inline-flex px-6 py-2 rounded-lg font-semibold text-sm text-white bg-[#ff0080] hover:shadow-[0_0_20px_rgba(255,0,128,0.5)] transition-all"
+            >
+              Empieza Ahora
+            </button>
             </div>
           </div>
 
@@ -918,7 +998,10 @@ export default function Home({ onEnter }: { onEnter: () => void }) {
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
-            <button className="group relative px-10 py-5 font-semibold text-white text-lg rounded-lg overflow-hidden transform hover:scale-105 transition-all">
+            <button 
+              onClick={() => setShowAuthModal(true)} 
+              className="group relative px-10 py-5 font-semibold text-white text-lg rounded-lg overflow-hidden transform hover:scale-105 transition-all"
+            >
               <div className="absolute inset-0 bg-gradient-to-r from-[#ff0080] via-[#00ffff] to-[#0080ff] group-hover:blur-lg transition-all duration-300 opacity-75 group-hover:opacity-100" />
               <div className="absolute inset-[2px] bg-[#0a0e27] rounded-[6px]" />
               <span className="relative flex items-center justify-center gap-2 group-hover:gap-3 transition-all">
@@ -931,6 +1014,80 @@ export default function Home({ onEnter }: { onEnter: () => void }) {
               Solicitar Demo Personalizada
             </button>
           </div>
+
+          <section className="py-20 relative overflow-hidden">
+  <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="text-center mb-16">
+      <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
+        Planes diseñados para cada etapa
+      </h2>
+      <p className="text-gray-400 max-w-2xl mx-auto">
+        Escala tu agencia con herramientas profesionales de automatización y seguimiento de diamantes.
+      </p>
+    </div>
+
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+      {/* Plan Starter */}
+      <div className="bg-[#0a0e27]/50 border border-gray-800 rounded-2xl p-8 hover:border-[#00ffff]/50 transition-all group backdrop-blur-sm">
+        <h3 className="text-xl font-bold text-white mb-2">Agency Starter</h3>
+        <p className="text-gray-400 text-sm mb-6">Ideal para agencias que están comenzando.</p>
+        <div className="mb-6 flex flex-col items-start">
+          <span className="text-4xl font-bold text-white">$180.000</span>
+          <span className="text-gray-400 text-sm">COP/mes</span>
+        </div>
+
+        <ul className="space-y-4 mb-8 text-sm text-gray-300">
+          <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-[#00ffff]" /> Hasta 20 Streamers</li>
+          <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-[#00ffff]" /> Tracking de Diamantes</li>
+          <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-[#00ffff]" /> Soporte Básico</li>
+        </ul>
+        <button onClick={() => setShowAuthModal(true)} className="w-full py-3 rounded-lg border border-[#00ffff]/30 text-[#00ffff] font-semibold hover:bg-[#00ffff]/10 transition-all">
+          Empezar Gratis
+        </button>
+      </div>
+
+      {/* Plan Pro (Destacado) */}
+      <div className="relative bg-[#0a0e27]/80 border-2 border-[#ff0080] rounded-2xl p-8 transform md:-translate-y-4 shadow-[0_0_30px_rgba(255,0,128,0.2)]">
+        <div className="absolute top-0 right-8 transform -translate-y-1/2 bg-[#ff0080] text-white text-xs font-bold px-3 py-1 rounded-full uppercase">
+          Más Popular
+        </div>
+        <h3 className="text-xl font-bold text-white mb-2">Agency Growth</h3>
+        <p className="text-gray-400 text-sm mb-6">Para agencias en pleno crecimiento.</p>
+         <div className="mb-6 flex flex-col items-start">
+          <span className="text-4xl font-bold text-white">$350.000</span>
+          <span className="text-gray-400 text-sm ml-2">COP/mes</span>
+        </div>
+        <ul className="space-y-4 mb-8 text-sm text-gray-300">
+          <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-[#ff0080]" /> Hasta 100 Streamers</li>
+          <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-[#ff0080]" /> Automatización de Batallas</li>
+          <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-[#ff0080]" /> Dashboard Avanzado</li>
+          <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-[#ff0080]" /> Soporte Prioritario</li>
+        </ul>
+        <button onClick={() => setShowAuthModal(true)} className="w-full py-3 rounded-lg bg-[#ff0080] text-white font-bold hover:shadow-[0_0_20px_rgba(255,0,128,0.5)] transition-all">
+          Obtener Pro
+        </button>
+      </div>
+
+      {/* Plan Enterprise */}
+      <div className="bg-[#0a0e27]/50 border border-gray-800 rounded-2xl p-8 hover:border-[#0080ff]/50 transition-all group backdrop-blur-sm">
+        <h3 className="text-xl font-bold text-white mb-2">Agency Elite</h3>
+        <p className="text-gray-400 text-sm mb-6">Control total para grandes operaciones.</p>
+         <div className="mb-6 flex flex-col items-start">
+          <span className="text-4xl font-bold text-white">$735.000</span>
+          <span className="text-gray-400 text-sm ml-2">COP/mes</span>
+        </div>
+        <ul className="space-y-4 mb-8 text-sm text-gray-300">
+          <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-[#0080ff]" /> Streamers Ilimitados</li>
+          <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-[#0080ff]" /> API personalizada</li>
+          <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-[#0080ff]" /> Manager de cuenta dedicado</li>
+        </ul>
+        <button onClick={() => setShowAuthModal(true)} className="w-full py-3 rounded-lg border border-[#0080ff]/30 text-[#0080ff] font-semibold hover:bg-[#0080ff]/10 transition-all">
+          Contactar Ventas
+        </button>
+      </div>
+    </div>
+  </div>
+</section>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-8 text-sm text-gray-400">
             {[
@@ -1071,30 +1228,39 @@ export default function Home({ onEnter }: { onEnter: () => void }) {
           <div className="relative w-full max-w-md p-8 rounded-2xl border border-[#00ffff]/30 bg-[#1a1f3a] shadow-2xl text-white">
             <button
               onClick={() => setShowAuthModal(false)}
-              className="absolute top-4 right-4 text-gray-400 hover:text-white"
+              className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors"
             >
               <X className="w-6 h-6" />
             </button>
 
             <h2 className="text-2xl font-bold mb-6 text-center">
-              Inicia Sesión
+              {authMode === 'login' ? 'Bienvenido de nuevo' : 'Crea tu cuenta'}
             </h2>
 
-            <div className="space-y-4 mb-6">
+            <form onSubmit={handleEmailLogin} className="space-y-4 mb-6">
               <input
                 type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 placeholder="Correo electrónico"
-                className="w-full px-4 py-3 rounded-lg bg-[#0a0e27] border border-[#2d3247] outline-none focus:border-[#00ffff]"
+                className="w-full px-4 py-3 rounded-lg bg-[#0a0e27] border border-[#2d3247] outline-none focus:border-[#00ffff] transition-all"
               />
               <input
                 type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 placeholder="Contraseña"
-                className="w-full px-4 py-3 rounded-lg bg-[#0a0e27] border border-[#2d3247] outline-none focus:border-[#00ffff]"
+                className="w-full px-4 py-3 rounded-lg bg-[#0a0e27] border border-[#2d3247] outline-none focus:border-[#00ffff] transition-all"
               />
-              <button className="w-full py-3 rounded-lg bg-[#ff0080] font-bold hover:bg-[#ff0080]/90 transition-all">
-                Continuar con correo
+              <button 
+                type="submit"
+                className="w-full py-3 rounded-lg bg-[#ff0080] font-bold hover:bg-[#ff0080]/90 transition-all active:scale-[0.98]"
+              >
+                {authMode === 'login' ? 'Iniciar Sesión' : 'Registrarse ahora'}
               </button>
-            </div>
+            </form>
 
             <div className="relative flex items-center justify-center mb-6">
               <div className="absolute inset-0 flex items-center">
@@ -1106,19 +1272,29 @@ export default function Home({ onEnter }: { onEnter: () => void }) {
             </div>
 
             <button
+              type="button"
               onClick={handleGoogleLogin}
-              className="w-full flex items-center justify-center gap-3 py-3 rounded-lg bg-white text-black font-semibold hover:bg-gray-100 transition-all"
+              className="w-full flex items-center justify-center gap-3 py-3 rounded-lg bg-white text-black font-semibold hover:bg-gray-100 transition-all active:scale-[0.98]"
             >
-              <img
-                src="https://www.google.com/favicon.ico"
-                className="w-5 h-5"
-                alt="Google"
-              />
-              Continuar con Google
+              <img src="https://www.google.com/favicon.ico" className="w-5 h-5" alt="Google" />
+              {authMode === 'login' ? 'Entrar con Google' : 'Regístrate con Google'}
             </button>
+
+            {/* 🟢 MOVIDO AQUÍ ADENTRO: Para que el texto esté dentro del cuadro del modal */}
+            <p className="text-center text-sm text-gray-400 mt-6">
+              {authMode === 'login' ? '¿No tienes cuenta?' : '¿Ya tienes cuenta?'}
+              <button 
+                type="button" 
+                onClick={() => setAuthMode(authMode === 'login' ? 'signup' : 'login')}
+                className="ml-2 text-[#00ffff] hover:underline font-medium"
+              >
+                {authMode === 'login' ? 'Regístrate' : 'Inicia sesión'}
+              </button>
+            </p>
           </div>
         </div>
       )}
+
     </main>
   );
 }
