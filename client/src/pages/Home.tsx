@@ -366,9 +366,21 @@ const handleEmailLogin = async (e: React.FormEvent) => {
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
             <div className="flex items-center gap-2">
-              <div className="p-2 rounded-lg bg-gradient-to-br from-[#ff0080] to-[#00ffff]">
-                <Zap className="w-5 h-5 text-white" />
-              </div>
+              {/* --- INICIO CAMBIO AQUÍ --- */}
+        {/* Comentamos el icono antiguo */}
+        {/* <div className="p-2 rounded-lg bg-gradient-to-br from-[#ff0080] to-[#00ffff]">
+          <Zap className="w-5 h-5 text-white" />
+        </div> */}
+
+        {/* Añadimos la imagen del logo con un contenedor para controlar el tamaño */}
+        <div className="w-10 h-10 rounded-lg overflow-hidden">
+          <img 
+            alt="AH" 
+            className="w-full h-full object-cover" 
+            src="https://d2xsxph8kpxj0f.cloudfront.net/310519663455864775/gVC6y5Q2wpNYr4v7JmuSu6/agency-hub-logo-D42x3YiMh7exopMvRVDsmF.webp"
+          />
+        </div>
+        {/* --- FIN CAMBIO AQUÍ --- */}
               <span className="text-xl font-bold">
                 <span className="bg-gradient-to-r from-[#ff0080] to-[#00ffff] text-transparent bg-clip-text">
                   Agency
