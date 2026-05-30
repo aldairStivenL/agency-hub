@@ -30,7 +30,7 @@ const NAV_ITEMS = [
   { id: "battles", label: "Batallas Automáticas", icon: Swords },
   { id: "reports", label: "Reportes Financieros", icon: BarChart3 },
   { id: "forum", label: "Foro Comunitario", icon: MessageSquare },
-  { id: "flowchart", label: "Diagrama de Flujo", icon: GitBranch },
+  { id: "flowchart", label: "Consultar Streamer", icon: GitBranch },
 ];
 
 const PAGE_TITLES: Record<string, string> = {
@@ -39,7 +39,7 @@ const PAGE_TITLES: Record<string, string> = {
   battles: "Batallas Automáticas",
   reports: "Reportes Financieros",
   forum: "Foro Comunitario",
-  flowchart: "Diagrama de Flujo",
+  flowchart: "Consultar Streamer",
   streamer_profile: "Perfil de Streamer",
 };
 

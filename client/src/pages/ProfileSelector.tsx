@@ -6,7 +6,7 @@
 
 import { useApp } from "@/contexts/AppContext";
 import { motion } from "framer-motion";
-import { Shield, User, ChevronRight, LogOut } from "lucide-react";
+import { Shield, ChevronRight, LogOut } from "lucide-react";
 import { supabase } from "./supabaseClient";
 
 const LOGIN_BG = "https://d2xsxph8kpxj0f.cloudfront.net/310519663455864775/gVC6y5Q2wpNYr4v7JmuSu6/agency-hub-login-bg-m89PU4UoGMpfkQbMXrbJuE.webp";
@@ -98,37 +98,24 @@ export default function ProfileSelector() {
           <h1 className="text-4xl font-bold text-white">Agency Hub</h1>
         </motion.div>
 
-        {/* Role Cards */}
-        <div className="grid grid-cols-2 gap-4">
-          {/* Admin Card */}
+        {/* Agency Card */}
+        <div className="flex justify-center">
           <motion.button
             onClick={() => handleRoleSelection("admin")}
-            className="group relative flex flex-col items-center p-6 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md hover:border-red-500/50 transition-all"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="group relative flex flex-col items-center p-8 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md hover:border-red-500/50 transition-all w-64"
           >
-            <div className="w-16 h-16 rounded-full flex items-center justify-center mb-4"
+            <div className="w-20 h-20 rounded-full flex items-center justify-center mb-5"
+              style={{ background: "linear-gradient(135deg, #e8294c, #c41e3a)", boxShadow: "0 0 30px rgba(232,41,76,0.3)" }}>
+              <Shield className="w-10 h-10 text-white" />
+            </div>
+            <h3 className="text-white font-bold text-xl mb-1">Agencia</h3>
+            <p className="text-white/50 text-sm mb-5">Da click para continuar</p>
+            <div className="flex items-center gap-1 px-5 py-2 rounded-full text-sm font-semibold text-white"
               style={{ background: "linear-gradient(135deg, #e8294c, #c41e3a)" }}>
-              <Shield className="w-8 h-8 text-white" />
-            </div>
-            <h3 className="text-white font-bold text-lg">Administrador</h3>
-            <div className="mt-4 flex items-center gap-1 px-4 py-2 rounded-full text-xs font-semibold text-white"
-              style={{ background: "linear-gradient(135deg, #e8294c, #c41e3a)" }}>
-              Continuar <ChevronRight className="w-3 h-3" />
-            </div>
-          </motion.button>
-
-          {/* Streamer Card */}
-          <motion.button
-            onClick={() => handleRoleSelection("streamer")}
-            className="group relative flex flex-col items-center p-6 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md hover:border-cyan-500/50 transition-all"
-          >
-            <div className="w-16 h-16 rounded-full flex items-center justify-center mb-4"
-              style={{ background: "linear-gradient(135deg, #00b4d8, #0077b6)" }}>
-              <User className="w-8 h-8 text-white" />
-            </div>
-            <h3 className="text-white font-bold text-lg">Streamer</h3>
-            <div className="mt-4 flex items-center gap-1 px-4 py-2 rounded-full text-xs font-semibold text-white"
-              style={{ background: "linear-gradient(135deg, #00b4d8, #0077b6)" }}>
-              Continuar <ChevronRight className="w-3 h-3" />
+              Ingresar <ChevronRight className="w-4 h-4" />
             </div>
           </motion.button>
         </div>

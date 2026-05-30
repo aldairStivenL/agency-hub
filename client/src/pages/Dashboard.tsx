@@ -5,7 +5,9 @@
  */
 
 import { useApp } from "@/contexts/AppContext";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
+import { supabase } from "./supabaseClient";
 import {
   Diamond,
   Users,
@@ -144,16 +146,27 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 export default function Dashboard() {
-  const { streamers, battles } = useApp();
+  const { streamers } = useApp();
+  const [pendingBattles, setPendingBattles] = useState(0);
+  const [wonBattles, setWonBattles]         = useState(0);
 
-  const totalDiamonds = streamers.reduce((acc, s) => acc + s.diamonds, 0);
-  const prevDiamonds = streamers.reduce((acc, s) => acc + s.diamondsPrev, 0);
-  const diamondChange = ((totalDiamonds - prevDiamonds) / prevDiamonds * 100).toFixed(1);
-  const liveCount = streamers.filter(s => s.isLive).length;
-  const totalEarnings = streamers.reduce((acc, s) => acc + s.earnings, 0);
+  useEffect(() => {
+    supabase
+      .from("battles")
+      .select("result")
+      .then(({ data }) => {
+        if (!data) return;
+        setPendingBattles(data.filter(b => b.result === "pending").length);
+        setWonBattles(data.filter(b => b.result === "win").length);
+      });
+  }, []);
+
+  const totalDiamonds   = streamers.reduce((acc, s) => acc + s.diamonds, 0);
+  const prevDiamonds    = streamers.reduce((acc, s) => acc + s.diamondsPrev, 0);
+  const diamondChange   = prevDiamonds > 0 ? ((totalDiamonds - prevDiamonds) / prevDiamonds * 100).toFixed(1) : "0";
+  const liveCount       = streamers.filter(s => s.isLive).length;
+  const totalEarnings   = streamers.reduce((acc, s) => acc + s.earnings, 0);
   const totalCommission = streamers.reduce((acc, s) => acc + s.commission, 0);
-  const pendingBattles = battles.filter(b => b.result === "pending").length;
-  const wonBattles = battles.filter(b => b.result === "win").length;
 
   return (
     <div className="space-y-6">
@@ -177,24 +190,6 @@ export default function Dashboard() {
           accent="#4f6ef7"
           delay={0.1}
           subtitle={`${liveCount} en vivo`}
-        />
-        <MetricCard
-          title="Ingresos Totales (USD)"
-          value={`$${totalEarnings.toFixed(2)}`}
-          change="Diamantes × 80/05"
-          positive={true}
-          icon={<DollarSign className="w-4 h-4" />}
-          accent="#22c55e"
-          delay={0.15}
-        />
-        <MetricCard
-          title="Comisión de Agencia"
-          value={`$${totalCommission.toFixed(2)}`}
-          change="20% de ingresos totales"
-          positive={true}
-          icon={<TrendingUp className="w-4 h-4" />}
-          accent="#f59e0b"
-          delay={0.2}
         />
       </div>
 

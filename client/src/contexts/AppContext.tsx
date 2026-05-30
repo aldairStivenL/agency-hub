@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, ReactNode } from "react";
+import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { supabase } from "@/pages/supabaseClient";
 
 export type UserRole = "admin" | "streamer" | null;
 
@@ -53,7 +54,8 @@ interface AppContextType {
   currentPage: string;
   setCurrentPage: (page: string) => void;
   streamers: Streamer[];
-  battles: Battle[];
+  setStreamers: React.Dispatch<React.SetStateAction<Streamer[]>>;
+  loadingStreamers: boolean;
   forumPosts: ForumPost[];
   selectedStreamerId: string | null;
   setSelectedStreamerId: (id: string | null) => void;
@@ -299,10 +301,65 @@ const MOCK_FORUM: ForumPost[] = [
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
+// Mapea una fila de Supabase al tipo Streamer del frontend
+function rowToStreamer(row: any): Streamer {
+  return {
+    id:           row.id,
+    name:         row.nickname,
+    tiktokUser:   row.tiktok_user,
+    avatar:       row.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${row.tiktok_user}`,
+    diamonds:     row.diamonds      ?? 0,
+    diamondsPrev: row.diamonds_prev ?? 0,
+    followers:    row.seguidores    ?? 0,
+    isLive:       row.is_live       ?? false,
+    rank:         row.rank          ?? "Bronze",
+    joinDate:     row.joined_at?.split("T")[0] ?? "",
+    earnings:     row.earnings      ?? 0,
+    commission:   row.commission    ?? 20,
+    battles:      row.battles       ?? 0,
+    wins:         row.wins          ?? 0,
+    phone:        row.phone,
+    email:        row.email,
+    notes:        row.notes,
+  };
+}
+
 export function AppProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<UserRole>(null);
   const [currentPage, setCurrentPage] = useState("dashboard");
   const [selectedStreamerId, setSelectedStreamerId] = useState<string | null>(null);
+  const [streamers, setStreamers] = useState<Streamer[]>([]);
+  const [loadingStreamers, setLoadingStreamers] = useState(false);
+
+  // Carga streamers desde Supabase cuando el rol es admin
+  useEffect(() => {
+    if (role !== "admin") return;
+
+    const fetchStreamers = async () => {
+      setLoadingStreamers(true);
+      const { data, error } = await supabase
+        .from("streamers")
+        .select("*")
+        .order("joined_at", { ascending: false });
+
+      if (!error && data) {
+        setStreamers(data.map(rowToStreamer));
+      }
+      setLoadingStreamers(false);
+    };
+
+    fetchStreamers();
+
+    // Suscripción realtime: actualiza la lista si hay cambios en Supabase
+    const channel = supabase
+      .channel("streamers_changes")
+      .on("postgres_changes", { event: "*", schema: "public", table: "streamers" }, () => {
+        fetchStreamers();
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [role]);
 
   return (
     <AppContext.Provider
@@ -311,8 +368,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setRole,
         currentPage,
         setCurrentPage,
-        streamers: MOCK_STREAMERS,
-        battles: MOCK_BATTLES,
+        streamers,
+        setStreamers,
+        loadingStreamers,
         forumPosts: MOCK_FORUM,
         selectedStreamerId,
         setSelectedStreamerId,

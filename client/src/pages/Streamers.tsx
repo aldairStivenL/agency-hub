@@ -7,24 +7,27 @@ import { useApp } from "@/contexts/AppContext";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState } from "react";
 import {
-  Search,
-  Plus,
-  Diamond,
-  Radio,
-  Phone,
-  Mail,
-  X,
-  Trophy,
-  Swords,
-  TrendingUp,
-  TrendingDown,
-  Star,
-  ExternalLink,
-  MessageCircle,
-  Users,
+  Search, Plus, Diamond, Radio, Phone, Mail, X, Trophy,
+  Swords, TrendingUp, TrendingDown, Star, ExternalLink,
+  MessageCircle, Users, Loader2, CheckCircle, BarChart2, Link,
 } from "lucide-react";
 import type { Streamer } from "@/contexts/AppContext";
 import { toast } from "sonner";
+import { supabase } from "./supabaseClient";
+import StreamerStats, { type StreamerStatsData } from "@/pages/StreamerStats";
+
+const API     = import.meta.env.VITE_API_URL || "http://localhost:8000";
+const API_KEY = import.meta.env.VITE_API_KEY || "";
+
+function apiFetch(url: string, options: RequestInit = {}) {
+  return fetch(url, {
+    ...options,
+    headers: {
+      ...(options.headers || {}),
+      ...(API_KEY ? { "X-Api-Key": API_KEY } : {}),
+    },
+  });
+}
 
 const RANK_COLORS: Record<string, string> = {
   Elite: "#f59e0b",
@@ -36,6 +39,245 @@ const RANK_COLORS: Record<string, string> = {
 
 const RANK_ORDER = ["Elite", "Diamond", "Gold", "Silver", "Bronze"];
 
+// ── Modal: Añadir Creador ──────────────────────────────────────────────────
+interface ProfilePreview {
+  usuario: string;
+  nickname: string;
+  avatar: string | null;
+  bio: string;
+  seguidores: number;
+  siguiendo: number;
+  likes: number;
+  verificado: boolean;
+  is_live: boolean;
+}
+
+function AddStreamerModal({ onClose, onAdded }: { onClose: () => void; onAdded: (s: Streamer) => void }) {
+  const [input, setInput]           = useState("");
+  const [buscando, setBuscando]     = useState(false);
+  const [guardando, setGuardando]   = useState(false);
+  const [preview, setPreview]       = useState<ProfilePreview | null>(null);
+  const [errorMsg, setErrorMsg]     = useState("");
+
+  const buscar = async () => {
+    const user = input.trim().replace(/^@/, "");
+    if (!user) return;
+    setBuscando(true);
+    setErrorMsg("");
+    setPreview(null);
+    try {
+      const res  = await apiFetch(`${API}/api/perfil/${encodeURIComponent(user)}`);
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.mensaje || "Usuario no encontrado");
+      setPreview(data);
+    } catch (e: any) {
+      setErrorMsg(e.message);
+    } finally {
+      setBuscando(false);
+    }
+  };
+
+  const guardar = async () => {
+    if (!preview) return;
+    setGuardando(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("No hay sesión activa");
+
+      // Diamantes random para demo (entre 10k y 500k)
+      const randomDiamonds     = Math.floor(Math.random() * 490_000) + 10_000;
+      const randomDiamondsPrev = Math.floor(randomDiamonds * (0.7 + Math.random() * 0.5));
+
+      const { data, error } = await supabase
+        .from("streamers")
+        .insert({
+          agency_id:   user.id,
+          tiktok_user: preview.usuario,
+          nickname:    preview.nickname,
+          avatar:      preview.avatar,
+          bio:         preview.bio,
+          seguidores:  preview.seguidores,
+          siguiendo:   preview.siguiendo,
+          likes:       preview.likes,
+          verificado:  preview.verificado,
+          is_live:     preview.is_live,
+          diamonds:     randomDiamonds,
+          diamonds_prev: randomDiamondsPrev,
+        })
+        .select()
+        .single();
+
+      if (error) {
+        if (error.code === "23505") throw new Error("Este creador ya está en tu agencia");
+        throw new Error(error.message);
+      }
+
+      const nuevo: Streamer = {
+        id:           data.id,
+        name:         data.nickname,
+        tiktokUser:   data.tiktok_user,
+        avatar:       data.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${data.tiktok_user}`,
+        diamonds:     data.diamonds     ?? randomDiamonds,
+        diamondsPrev: data.diamonds_prev ?? randomDiamondsPrev,
+        followers:    data.seguidores   ?? 0,
+        isLive:       data.is_live      ?? false,
+        rank:         "Bronze",
+        joinDate:     new Date().toISOString().split("T")[0],
+        earnings:     0,
+        commission:   20,
+        battles:      0,
+        wins:         0,
+      };
+
+      toast.success(`@${preview.usuario} añadido a la agencia`);
+      onAdded(nuevo);
+      onClose();
+    } catch (e: any) {
+      setErrorMsg(e.message);
+    } finally {
+      setGuardando(false);
+    }
+  };
+
+  const formatNum = (n: number | null) => {
+    if (n === null || n === undefined) return "—";
+    if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + "M";
+    if (n >= 1_000)     return (n / 1_000).toFixed(1) + "K";
+    return n.toString();
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: "rgba(0,0,0,0.75)" }}
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ scale: 0.92, opacity: 0, y: 20 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.92, opacity: 0, y: 20 }}
+        transition={{ type: "spring", damping: 22 }}
+        className="w-full max-w-md rounded-2xl overflow-hidden"
+        style={{ background: "oklch(0.16 0.015 265)", border: "1px solid oklch(1 0 0 / 10%)" }}
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: "1px solid oklch(1 0 0 / 8%)" }}>
+          <h2 className="font-bold text-white text-lg" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+            Añadir Creador
+          </h2>
+          <button onClick={onClose} className="w-8 h-8 rounded-lg flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 transition-all">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="p-6 space-y-4">
+          {/* Input búsqueda */}
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 font-mono font-bold text-sm" style={{ color: "#e8294c" }}>@</span>
+              <input
+                className="w-full pl-8 pr-3 py-2.5 rounded-xl text-sm text-white outline-none transition-all"
+                style={{ background: "oklch(0.12 0.015 265)", border: "1px solid oklch(1 0 0 / 12%)" }}
+                placeholder="usuario de TikTok"
+                value={input}
+                onChange={e => { setInput(e.target.value); setPreview(null); setErrorMsg(""); }}
+                onKeyDown={e => e.key === "Enter" && buscar()}
+                onFocus={e  => (e.target.style.borderColor = "#e8294c")}
+                onBlur={e   => (e.target.style.borderColor = "oklch(1 0 0 / 12%)")}
+              />
+            </div>
+            <button
+              onClick={buscar}
+              disabled={buscando || !input.trim()}
+              className="px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-all disabled:opacity-40 flex items-center gap-2"
+              style={{ background: "linear-gradient(135deg, #e8294c, #c41e3a)" }}
+            >
+              {buscando ? <Loader2 className="w-4 h-4 animate-spin" /> : "Buscar"}
+            </button>
+          </div>
+
+          {/* Error */}
+          {errorMsg && (
+            <div className="px-4 py-3 rounded-xl text-sm font-mono"
+              style={{ background: "rgba(255,45,120,0.07)", border: "1px solid rgba(255,45,120,0.25)", color: "#ff2d78" }}>
+              ⚠️ {errorMsg}
+            </div>
+          )}
+
+          {/* Preview card */}
+          {preview && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+              className="rounded-xl overflow-hidden"
+              style={{ background: "oklch(0.20 0.015 265)", border: "1px solid oklch(1 0 0 / 10%)" }}
+            >
+              {/* Profile row */}
+              <div className="flex items-center gap-3 p-4">
+                <div className="relative flex-shrink-0">
+                  {preview.avatar
+                    ? <img src={preview.avatar} className="w-14 h-14 rounded-xl object-cover" />
+                    : <div className="w-14 h-14 rounded-xl bg-white/10 flex items-center justify-center text-2xl font-bold text-white/50">
+                        {preview.nickname.charAt(0).toUpperCase()}
+                      </div>
+                  }
+                  {preview.is_live && (
+                    <span className="absolute -top-1 -right-1 text-[10px] px-1.5 py-px rounded-full font-bold text-white"
+                      style={{ background: "#e8294c" }}>LIVE</span>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-white truncate" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+                      {preview.nickname}
+                    </span>
+                    {preview.verificado && <span className="text-blue-400 text-xs">✓</span>}
+                  </div>
+                  <div className="text-sm mt-0.5" style={{ color: "oklch(0.50 0.01 265)" }}>@{preview.usuario}</div>
+                  {preview.bio && (
+                    <div className="text-xs mt-1 line-clamp-2" style={{ color: "oklch(0.55 0.01 265)" }}>{preview.bio}</div>
+                  )}
+                </div>
+              </div>
+
+              {/* Stats row */}
+              <div className="grid grid-cols-3 divide-x" style={{ borderTop: "1px solid oklch(1 0 0 / 8%)", borderColor: "oklch(1 0 0 / 8%)" }}>
+                {[
+                  { label: "Seguidores", value: formatNum(preview.seguidores) },
+                  { label: "Siguiendo",  value: formatNum(preview.siguiendo)  },
+                  { label: "Likes",      value: formatNum(preview.likes)      },
+                ].map(s => (
+                  <div key={s.label} className="py-3 text-center" style={{ borderColor: "oklch(1 0 0 / 8%)" }}>
+                    <div className="font-mono font-bold text-sm text-white">{s.value}</div>
+                    <div className="text-[10px] uppercase tracking-wide mt-0.5" style={{ color: "oklch(0.45 0.01 265)" }}>{s.label}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Confirm button */}
+              <div className="p-4" style={{ borderTop: "1px solid oklch(1 0 0 / 8%)" }}>
+                <button
+                  onClick={guardar}
+                  disabled={guardando}
+                  className="w-full py-2.5 rounded-xl text-sm font-semibold text-white transition-all disabled:opacity-40 flex items-center justify-center gap-2"
+                  style={{ background: "linear-gradient(135deg, #e8294c, #c41e3a)" }}
+                >
+                  {guardando
+                    ? <><Loader2 className="w-4 h-4 animate-spin" /> Guardando...</>
+                    : <><CheckCircle className="w-4 h-4" /> Añadir a la agencia</>
+                  }
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+// ── Modal: Detalle Streamer ────────────────────────────────────────────────
 function StreamerModal({ streamer, onClose }: { streamer: Streamer; onClose: () => void }) {
   const diamondChange = ((streamer.diamonds - streamer.diamondsPrev) / streamer.diamondsPrev * 100).toFixed(1);
   const positive = streamer.diamonds >= streamer.diamondsPrev;
@@ -112,11 +354,6 @@ function StreamerModal({ streamer, onClose }: { streamer: Streamer; onClose: () 
             <div className="text-xs mt-1" style={{ color: "oklch(0.50 0.01 265)" }}>Seguidores en TikTok</div>
           </div>
           <div className="rounded-xl p-3" style={{ background: "oklch(0.20 0.015 265)" }}>
-            <div className="text-xs mb-1" style={{ color: "oklch(0.50 0.01 265)" }}>Ingresos Totales</div>
-            <div className="text-lg font-bold text-green-400 ah-number">${streamer.earnings.toFixed(2)}</div>
-            <div className="text-xs mt-1" style={{ color: "oklch(0.50 0.01 265)" }}>USD generados</div>
-          </div>
-          <div className="rounded-xl p-3" style={{ background: "oklch(0.20 0.015 265)" }}>
             <div className="text-xs mb-1" style={{ color: "oklch(0.50 0.01 265)" }}>Batallas</div>
             <div className="text-lg font-bold text-white ah-number">{streamer.wins}/{streamer.battles}</div>
             <div className="text-xs mt-1 text-yellow-400">{winRate}% tasa de victoria</div>
@@ -152,22 +389,14 @@ function StreamerModal({ streamer, onClose }: { streamer: Streamer; onClose: () 
 
         {/* Actions */}
         <div className="px-6 pb-6 flex gap-2">
-          <button
-            onClick={() => { toast.success("Abriendo WhatsApp..."); }}
-            className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium text-white transition-all hover:opacity-90"
-            style={{ background: "linear-gradient(135deg, #25d366, #128c7e)" }}
-          >
-            <MessageCircle className="w-4 h-4" />
-            WhatsApp
-          </button>
-          <button
-            onClick={() => { toast.success("Abriendo perfil de TikTok..."); }}
-            className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium text-white transition-all hover:opacity-90"
-            style={{ background: "linear-gradient(135deg, #e8294c, #c41e3a)" }}
-          >
-            <ExternalLink className="w-4 h-4" />
-            Ver TikTok
-          </button>
+        <button
+          onClick={() => window.open(`https://www.tiktok.com/@${streamer.tiktokUser}`, '_blank', 'noopener,noreferrer')}
+          className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium text-white transition-all hover:opacity-90"
+          style={{ background: "linear-gradient(135deg, #e8294c, #c41e3a)" }}
+        >
+          <ExternalLink className="w-4 h-4" />
+          Ver TikTok
+        </button>
         </div>
       </motion.div>
     </motion.div>
@@ -175,11 +404,14 @@ function StreamerModal({ streamer, onClose }: { streamer: Streamer; onClose: () 
 }
 
 export default function StreamersPage() {
-  const { streamers } = useApp();
-  const [search, setSearch] = useState("");
-  const [filterRank, setFilterRank] = useState<string>("all");
-  const [filterLive, setFilterLive] = useState(false);
+  const { streamers, setStreamers, loadingStreamers } = useApp();
+  const [search, setSearch]                 = useState("");
+  const [filterRank, setFilterRank]         = useState<string>("all");
+  const [filterLive, setFilterLive]         = useState(false);
   const [selectedStreamer, setSelectedStreamer] = useState<Streamer | null>(null);
+  const [showAddModal, setShowAddModal]     = useState(false);
+  const [statsStreamer, setStatsStreamer]   = useState<StreamerStatsData | null>(null);
+  const [loadingStats, setLoadingStats]     = useState(false);
 
   const filtered = streamers.filter((s) => {
     const matchSearch = s.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -188,6 +420,28 @@ export default function StreamersPage() {
     const matchLive = !filterLive || s.isLive;
     return matchSearch && matchRank && matchLive;
   });
+
+  const openStats = async (streamer: Streamer) => {
+    setLoadingStats(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    const { data, error } = await supabase
+      .from("streamer_public_stats")
+      .select("*")
+      .eq("agency_id", user?.id)
+      .eq("tiktok_user", streamer.tiktokUser)
+      .single();
+    setLoadingStats(false);
+    if (error || !data) { toast.error("No se pudieron cargar las stats"); return; }
+    setStatsStreamer(data as StreamerStatsData);
+  };
+
+  const copyInviteLink = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const url = `${window.location.origin}/streamer/${user.id}`;
+    await navigator.clipboard.writeText(url);
+    toast.success("Link de invitación copiado");
+  };
 
   return (
     <div className="space-y-5">
@@ -243,8 +497,15 @@ export default function StreamersPage() {
 
         {/* Add streamer */}
         <button
-          onClick={() => toast.info("Función de agregar streamer próximamente")}
-          className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-medium text-white transition-all hover:opacity-90 ml-auto"
+          onClick={copyInviteLink}
+          className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-medium transition-all hover:opacity-90"
+          style={{ background: "oklch(0.22 0.02 265)", color: "oklch(0.60 0.01 265)", border: "1px solid oklch(1 0 0 / 10%)" }}>
+          <Link className="w-4 h-4" />
+          Link invitación
+        </button>
+        <button
+          onClick={() => setShowAddModal(true)}
+          className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-medium text-white transition-all hover:opacity-90"
           style={{ background: "linear-gradient(135deg, #e8294c, #c41e3a)" }}
         >
           <Plus className="w-4 h-4" />
@@ -252,12 +513,20 @@ export default function StreamersPage() {
         </button>
       </motion.div>
 
+      {/* Loading */}
+      {loadingStreamers && (
+        <div className="flex items-center justify-center py-16">
+          <Loader2 className="w-8 h-8 animate-spin" style={{ color: "#e8294c" }} />
+        </div>
+      )}
+
       {/* Streamers Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-        {filtered.map((streamer, i) => {
-          const diamondChange = ((streamer.diamonds - streamer.diamondsPrev) / streamer.diamondsPrev * 100).toFixed(1);
-          const positive = streamer.diamonds >= streamer.diamondsPrev;
-          const winRate = streamer.battles > 0 ? ((streamer.wins / streamer.battles) * 100).toFixed(0) : "0";
+      {!loadingStreamers && (<>
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          {filtered.map((streamer, i) => {
+            const diamondChange = ((streamer.diamonds - streamer.diamondsPrev) / streamer.diamondsPrev * 100).toFixed(1);
+            const positive = streamer.diamonds >= streamer.diamondsPrev;
+            const winRate = streamer.battles > 0 ? ((streamer.wins / streamer.battles) * 100).toFixed(0) : "0";
 
           return (
             <motion.div
@@ -316,9 +585,9 @@ export default function StreamersPage() {
                   <div className="text-xs" style={{ color: "oklch(0.45 0.01 265)" }}>Victorias</div>
                 </div>
                 <div className="rounded-lg p-2 text-center" style={{ background: "oklch(0.20 0.015 265)" }}>
-                  <Trophy className="w-3 h-3 mx-auto mb-1 text-yellow-400" />
-                  <div className="text-xs font-bold text-green-400 ah-number">${(streamer.earnings / 1000).toFixed(1)}k</div>
-                  <div className="text-xs" style={{ color: "oklch(0.45 0.01 265)" }}>USD</div>
+                  <Users className="w-3 h-3 mx-auto mb-1 text-purple-400" />
+                  <div className="text-xs font-bold text-white ah-number">{streamer.followers > 0 ? (streamer.followers / 1000).toFixed(0) + "k" : "—"}</div>
+                  <div className="text-xs" style={{ color: "oklch(0.45 0.01 265)" }}>Seguidores</div>
                 </div>
               </div>
 
@@ -327,20 +596,66 @@ export default function StreamersPage() {
                 {positive ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
                 {positive ? "+" : ""}{diamondChange}% vs mes anterior
               </div>
+
+              {/* Ver stats */}
+              <button
+                onClick={e => { e.stopPropagation(); openStats(streamer); }}
+                className="w-full mt-3 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold transition-all hover:opacity-90"
+                style={{ background: "rgba(79,110,247,0.12)", color: "#4f6ef7", border: "1px solid rgba(79,110,247,0.2)" }}>
+                {loadingStats ? <Loader2 className="w-3 h-3 animate-spin" /> : <BarChart2 className="w-3 h-3" />}
+                Ver estadísticas
+              </button>
             </motion.div>
           );
-        })}
-      </div>
+          })}
+        </div>
 
       {filtered.length === 0 && (
         <div className="text-center py-16" style={{ color: "oklch(0.50 0.01 265)" }}>
           <Users className="w-12 h-12 mx-auto mb-3 opacity-30" />
-          <p>No se encontraron streamers</p>
+          <p>{streamers.length === 0 ? "Aún no tienes creadores. ¡Añade el primero!" : "No se encontraron streamers"}</p>
         </div>
       )}
+      </>)}
 
-      {/* Modal */}
+      {/* Modales */}
       <AnimatePresence>
+        {showAddModal && (
+          <AddStreamerModal
+            onClose={() => setShowAddModal(false)}
+            onAdded={(s) => setStreamers(prev => [s, ...prev])}
+          />
+        )}
+        {statsStreamer && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            style={{ background: "rgba(0,0,0,0.80)" }}
+            onClick={() => setStatsStreamer(null)}>
+            <motion.div
+              initial={{ scale: 0.92, y: 20, opacity: 0 }}
+              animate={{ scale: 1, y: 0, opacity: 1 }}
+              exit={{ scale: 0.92, y: 20, opacity: 0 }}
+              transition={{ type: "spring", damping: 22 }}
+              className="w-full max-w-2xl rounded-2xl overflow-hidden max-h-[90vh] overflow-y-auto"
+              style={{ background: "oklch(0.13 0.015 265)", border: "1px solid oklch(1 0 0 / 10%)" }}
+              onClick={e => e.stopPropagation()}>
+              <div className="flex items-center justify-between px-6 py-4 sticky top-0 z-10"
+                style={{ background: "oklch(0.13 0.015 265)", borderBottom: "1px solid oklch(1 0 0 / 8%)" }}>
+                <h3 className="font-bold text-white" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+                  Estadísticas del Streamer
+                </h3>
+                <button onClick={() => setStatsStreamer(null)}
+                  className="w-8 h-8 rounded-lg flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 transition-all">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <div className="p-6">
+                <StreamerStats data={statsStreamer} />
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
         {selectedStreamer && (
           <StreamerModal streamer={selectedStreamer} onClose={() => setSelectedStreamer(null)} />
         )}
