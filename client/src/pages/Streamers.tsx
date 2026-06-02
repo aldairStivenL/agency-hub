@@ -108,7 +108,20 @@ function AddStreamerModal({ onClose, onAdded }: { onClose: () => void; onAdded: 
         .single();
 
       if (error) {
-        if (error.code === "23505") throw new Error("Este creador ya está en tu agencia");
+        if (error.code === "23505") {
+          // Verificar si el streamer está en ESTA agencia u otra
+          const { data: existing } = await supabase
+            .from("streamers")
+            .select("agency_id")
+            .eq("tiktok_user", preview.usuario)
+            .single();
+
+          if (existing?.agency_id === user.id) {
+            throw new Error("Este creador ya está en tu agencia");
+          } else {
+            throw new Error(`@${preview.usuario} ya pertenece a otra agencia y no puede ser añadido`);
+          }
+        }
         throw new Error(error.message);
       }
 
@@ -389,14 +402,22 @@ function StreamerModal({ streamer, onClose }: { streamer: Streamer; onClose: () 
 
         {/* Actions */}
         <div className="px-6 pb-6 flex gap-2">
-        <button
-          onClick={() => window.open(`https://www.tiktok.com/@${streamer.tiktokUser}`, '_blank', 'noopener,noreferrer')}
-          className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium text-white transition-all hover:opacity-90"
-          style={{ background: "linear-gradient(135deg, #e8294c, #c41e3a)" }}
-        >
-          <ExternalLink className="w-4 h-4" />
-          Ver TikTok
-        </button>
+          <button
+            onClick={() => { toast.success("Abriendo WhatsApp..."); }}
+            className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium text-white transition-all hover:opacity-90"
+            style={{ background: "linear-gradient(135deg, #25d366, #128c7e)" }}
+          >
+            <MessageCircle className="w-4 h-4" />
+            WhatsApp
+          </button>
+          <button
+            onClick={() => { toast.success("Abriendo perfil de TikTok..."); }}
+            className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium text-white transition-all hover:opacity-90"
+            style={{ background: "linear-gradient(135deg, #e8294c, #c41e3a)" }}
+          >
+            <ExternalLink className="w-4 h-4" />
+            Ver TikTok
+          </button>
         </div>
       </motion.div>
     </motion.div>
