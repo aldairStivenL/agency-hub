@@ -15,7 +15,6 @@ import Home               from "./pages/Home";
 import Dashboard          from "./pages/Dashboard";
 import StreamersPage      from "./pages/Streamers";
 import BattlesPage        from "./pages/Battles";
-import ReportsPage        from "./pages/Reports";
 import ForumPage          from "./pages/Forum";
 import FlowChartPage      from "./pages/FlowChart";
 import StreamerPublicView from "./pages/StreamerPublicView";
@@ -77,7 +76,6 @@ function AdminApp() {
       case "dashboard":  return <Dashboard />;
       case "streamers":  return <StreamersPage />;
       case "battles":    return <BattlesPage />;
-      case "reports":    return <ReportsPage />;
       case "forum":      return <ForumPage />;
       case "flowchart":  return <FlowChartPage />;
       default:           return <Dashboard />;

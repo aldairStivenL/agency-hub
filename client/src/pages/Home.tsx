@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { supabase } from "./supabaseClient";
-import Swal from "sweetalert2";
 import {
   AlertCircle,
   TrendingDown,
@@ -38,7 +37,6 @@ export default function Home({ onEnter, setRole }: HomeProps) {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
   const currentYear = new Date().getFullYear();
 
@@ -88,14 +86,7 @@ export default function Home({ onEnter, setRole }: HomeProps) {
 
     if (error) {
       console.error("Error al registrar cliente:", error.message);
-      Swal.fire({
-        icon: "error",
-        title: "Error de conexión",
-        text: "Hubo un error al conectar con Google. Intenta de nuevo.",
-        background: "#1a1f3a",
-        color: "#fff",
-        confirmButtonColor: "#ff0080",
-      });
+      alert("Hubo un error al conectar con Google");
       return;
     }
 
@@ -104,132 +95,61 @@ export default function Home({ onEnter, setRole }: HomeProps) {
   };
   // ── data ──────────────────────────────────────────────────────────────────
 const handleEmailLogin = async (e: React.FormEvent) => {
-  e.preventDefault();
-
+  e.preventDefault(); 
+  
   if (!email || !password) {
-    Swal.fire({
-      icon: "warning",
-      title: "Campos incompletos",
-      text: "Por favor, completa todos los campos.",
-      background: "#1a1f3a",
-      color: "#fff",
-      confirmButtonColor: "#ff0080",
-    });
+    alert("Por favor, completa todos los campos");
     return;
   }
 
-  // Validación de confirmación de contraseña en modo registro
-  if (authMode === 'signup') {
-    if (password !== confirmPassword) {
-      Swal.fire({
-        icon: "error",
-        title: "Las contraseñas no coinciden",
-        text: "Asegúrate de que ambas contraseñas sean iguales.",
-        background: "#1a1f3a",
-        color: "#fff",
-        confirmButtonColor: "#ff0080",
-      });
-      return;
-    }
-    if (password.length < 6) {
-      Swal.fire({
-        icon: "warning",
-        title: "Contraseña muy corta",
-        text: "La contraseña debe tener al menos 6 caracteres.",
-        background: "#1a1f3a",
-        color: "#fff",
-        confirmButtonColor: "#ff0080",
-      });
-      return;
-    }
-  }
+  // 1. Intentamos iniciar sesión
+  const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
 
-  if (authMode === 'login') {
-    // ── LOGIN ──────────────────────────────────────────────────────────
-    const { error: loginError } = await supabase.auth.signInWithPassword({ email, password });
-
-    if (loginError) {
-      const esCredenciales =
-        loginError.message.toLowerCase().includes("invalid") ||
-        loginError.message.toLowerCase().includes("credentials") ||
-        loginError.message.toLowerCase().includes("password");
-
-      Swal.fire({
-        icon: "error",
-        title: esCredenciales ? "Credenciales incorrectas" : "Error al iniciar sesión",
-        text: esCredenciales
-          ? "El correo o la contraseña son incorrectos. Verifica tus datos e intenta de nuevo."
-          : loginError.message,
-        background: "#1a1f3a",
-        color: "#fff",
-        confirmButtonColor: "#ff0080",
-      });
-      return;
-    }
-
+  // 2. Si no hay error de login, entramos directo
+  if (!loginError) {
     setShowAuthModal(false);
     onEnter();
+    return; // Salimos de la función aquí
+  }
 
+  // 3. Si hubo error de login, intentamos registrarlo (Suponiendo que es usuario nuevo)
+  const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+    email,
+    password,
+  });
+
+  if (signUpError) {
+    alert("Error: " + signUpError.message);
+    return;
+  }
+
+  // 4. Manejo del registro exitoso
+  // Si Supabase devuelve una sesión inmediatamente (porque el autoconfirm está activado)
+  if (signUpData.session) {
+    setShowAuthModal(false);
+    onEnter();
   } else {
-    // ── REGISTRO ───────────────────────────────────────────────────────
-    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({ email, password });
-
-    if (signUpError) {
-      Swal.fire({
-        icon: "error",
-        title: "Error al registrarse",
-        text: signUpError.message,
-        background: "#1a1f3a",
-        color: "#fff",
-        confirmButtonColor: "#ff0080",
-      });
-      return;
-    }
-
-    // Supabase devuelve éxito silencioso cuando el email ya existe (con email confirmation activado).
-    // La única forma confiable de detectarlo: el usuario devuelto tiene identities vacío.
-    const yaExiste =
-      signUpData.user &&
-      Array.isArray(signUpData.user.identities) &&
-      signUpData.user.identities.length === 0;
-
-    if (yaExiste) {
-      Swal.fire({
-        icon: "info",
-        title: "¡Ya tienes una cuenta!",
-        text: "Este correo ya está registrado. Inicia sesión con tus credenciales.",
-        background: "#1a1f3a",
-        color: "#fff",
-        confirmButtonColor: "#00ffff",
-        confirmButtonText: "Ir a Iniciar Sesión",
-      }).then(() => setAuthMode('login'));
-      return;
-    }
-
-    // Registro real exitoso
-    if (signUpData.session) {
-      setShowAuthModal(false);
-      onEnter();
-    } else {
-      Swal.fire({
-        icon: "success",
-        title: "¡Cuenta creada!",
-        text: "Revisa tu correo electrónico para verificar tu cuenta antes de ingresar.",
-        background: "#1a1f3a",
-        color: "#fff",
-        confirmButtonColor: "#00ffff",
-      });
-      setShowAuthModal(false);
-    }
+    // Si requiere confirmación de email
+    alert("¡Cuenta creada! Por favor, verifica tu correo electrónico para poder ingresar.");
+    setShowAuthModal(false);
   }
 };
 
   const navLinks = [
-    { label: "Producto", href: "#" },
-    { label: "Características", href: "#" },
-    { label: "Precios", href: "#" },
-    { label: "Documentación", href: "#" },
+    { label: "Producto",        href: "#producto"        },
+    { label: "Características", href: "#caracteristicas" },
+    { label: "Precios",         href: "#precios"         },
   ];
+
+  const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+    e.preventDefault();
+    const el = document.querySelector(href);
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    setMenuOpen(false);
+  };
 
   const problems = [
     {
@@ -481,6 +401,7 @@ const handleEmailLogin = async (e: React.FormEvent) => {
                 <a
                   key={link.label}
                   href={link.href}
+                  onClick={(e) => handleNavClick(e, link.href)}
                   className="text-gray-300 hover:text-white transition-colors text-sm font-medium"
                 >
                   {link.label}
@@ -522,6 +443,7 @@ const handleEmailLogin = async (e: React.FormEvent) => {
                   <a
                     key={link.label}
                     href={link.href}
+                    onClick={(e) => handleNavClick(e, link.href)}
                     className="block px-3 py-2 rounded-lg text-gray-300 hover:text-white hover:bg-[#2d3247]/50 transition-colors"
                   >
                     {link.label}
@@ -644,7 +566,7 @@ const handleEmailLogin = async (e: React.FormEvent) => {
       </section>
 
       {/* ═══════════════════════ PROBLEMA ═══════════════════════ */}
-      <section className="relative py-20 sm:py-32 px-4 sm:px-6 lg:px-8 overflow-hidden">
+      <section id="producto" className="relative py-20 sm:py-32 px-4 sm:px-6 lg:px-8 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#ff0080]/5 to-transparent pointer-events-none" />
         <div className="relative z-10 max-w-6xl mx-auto">
           <div className="text-center mb-16 sm:mb-20">
@@ -903,7 +825,7 @@ const handleEmailLogin = async (e: React.FormEvent) => {
       </section>
 
       {/* ═══════════════════════ CARACTERÍSTICAS ═══════════════════════ */}
-      <section className="relative py-20 sm:py-32 px-4 sm:px-6 lg:px-8 overflow-hidden">
+      <section id="caracteristicas" className="relative py-20 sm:py-32 px-4 sm:px-6 lg:px-8 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#0080ff]/5 to-transparent pointer-events-none" />
         <div className="absolute top-1/3 left-1/4 w-72 h-72 bg-[#ff0080]/20 rounded-full filter blur-3xl opacity-40 animate-pulse pointer-events-none" />
         <div className="absolute bottom-1/3 right-1/4 w-96 h-96 bg-[#0080ff]/20 rounded-full filter blur-3xl opacity-40 animate-pulse pointer-events-none" />
@@ -1132,7 +1054,7 @@ const handleEmailLogin = async (e: React.FormEvent) => {
             </button>
           </div>
 
-          <section className="py-20 relative overflow-hidden">
+          <section id="precios" className="py-20 relative overflow-hidden">
   <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
     <div className="text-center mb-16">
       <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
@@ -1371,16 +1293,6 @@ const handleEmailLogin = async (e: React.FormEvent) => {
                 placeholder="Contraseña"
                 className="w-full px-4 py-3 rounded-lg bg-[#0a0e27] border border-[#2d3247] outline-none focus:border-[#00ffff] transition-all"
               />
-              {authMode === 'signup' && (
-                <input
-                  type="password"
-                  required
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Confirmar contraseña"
-                  className="w-full px-4 py-3 rounded-lg bg-[#0a0e27] border border-[#2d3247] outline-none focus:border-[#00ffff] transition-all"
-                />
-              )}
               <button 
                 type="submit"
                 className="w-full py-3 rounded-lg bg-[#ff0080] font-bold hover:bg-[#ff0080]/90 transition-all active:scale-[0.98]"
@@ -1412,10 +1324,7 @@ const handleEmailLogin = async (e: React.FormEvent) => {
               {authMode === 'login' ? '¿No tienes cuenta?' : '¿Ya tienes cuenta?'}
               <button 
                 type="button" 
-                onClick={() => {
-                  setAuthMode(authMode === 'login' ? 'signup' : 'login');
-                  setConfirmPassword('');
-                }}
+                onClick={() => setAuthMode(authMode === 'login' ? 'signup' : 'login')}
                 className="ml-2 text-[#00ffff] hover:underline font-medium"
               >
                 {authMode === 'login' ? 'Regístrate' : 'Inicia sesión'}

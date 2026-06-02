@@ -11,7 +11,6 @@ import {
   LayoutDashboard,
   Users,
   Swords,
-  BarChart3,
   MessageSquare,
   GitBranch,
   LogOut,
@@ -28,7 +27,6 @@ const NAV_ITEMS = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
   { id: "streamers", label: "Streamers", icon: Users },
   { id: "battles", label: "Batallas Automáticas", icon: Swords },
-  { id: "reports", label: "Reportes Financieros", icon: BarChart3 },
   { id: "forum", label: "Foro Comunitario", icon: MessageSquare },
   { id: "flowchart", label: "Consultar Streamer", icon: GitBranch },
 ];
@@ -37,7 +35,6 @@ const PAGE_TITLES: Record<string, string> = {
   dashboard: "Panel de Control",
   streamers: "Streamers",
   battles: "Batallas Automáticas",
-  reports: "Reportes Financieros",
   forum: "Foro Comunitario",
   flowchart: "Consultar Streamer",
   streamer_profile: "Perfil de Streamer",
